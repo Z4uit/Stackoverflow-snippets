@@ -1,0 +1,76 @@
+import pandas as pd
+import timeit
+
+methods = {'join', 'apply', 'map', 'numpy','numpy_nomask'}
+times   = {}
+neval = 100
+for method in methods:
+    if method=='join':
+        times[method] = timeit.timeit('''import pandas as pd# Some incomplete data
+incData  = pd.DataFrame({'comp': (['A']*3 + ['B']*5 + ['C']*4)*1000,
+                        'x': ([1,2,3] + [1,2,3,4,5] + [1,2,3,4])*1000,
+                        'y': ([3,None,7] + [1,4,7,None,None] + [4,None,2,1])*1000})
+
+# Results of linear fit incomplete data
+fitTable = pd.DataFrame({'slope': [2,3,-1],
+                        'intercept': [1,-2,5]},
+                        index=['A','B','C'])
+
+incData = incData.join(fitTable,on='comp')
+incData.loc[incData['y'].isnull(),'y'] = incData[incData['y'].isnull()]['x']*\\
+                                            incData[incData['y'].isnull()]['slope']+\\
+                                            incData[incData['y'].isnull()]['intercept']
+incData.drop(['slope','intercept'], axis=1, inplace=True)''',number=neval)
+    elif method=='apply':
+        times[method] = timeit.timeit('''import pandas as pd# Some incomplete data
+incData  = pd.DataFrame({'comp': (['A']*3 + ['B']*5 + ['C']*4)*1000,
+                        'x': ([1,2,3] + [1,2,3,4,5] + [1,2,3,4])*1000,
+                        'y': ([3,None,7] + [1,4,7,None,None] + [4,None,2,1])*1000})
+
+# Results of linear fit incomplete data
+fitTable = pd.DataFrame({'slope': [2,3,-1],
+                        'intercept': [1,-2,5]},
+                        index=['A','B','C'])
+incData.loc[pd.isna(incData['y']), 'y'] = incData[pd.isna(incData['y'])].apply(lambda row: row['x']*fitTable.loc[row['comp'], 'slope']+fitTable.loc[row['comp'], 'intercept'], axis=1)''',number=neval)
+    elif method=='map':
+        times[method] = timeit.timeit('''import pandas as pd# Some incomplete data
+incData  = pd.DataFrame({'comp': (['A']*3 + ['B']*5 + ['C']*4)*1000,
+                        'x': ([1,2,3] + [1,2,3,4,5] + [1,2,3,4])*1000,
+                        'y': ([3,None,7] + [1,4,7,None,None] + [4,None,2,1])*1000})
+
+# Results of linear fit incomplete data
+fitTable = pd.DataFrame({'slope': [2,3,-1],
+                        'intercept': [1,-2,5]},
+                        index=['A','B','C'])
+mask = pd.isna(incData['y'])
+incData.loc[mask, 'y'] = incData.loc[mask, 'x']*\\
+                        incData.loc[mask,'comp'].map(fitTable['slope']) +\\
+                        incData.loc[mask,'comp'].map(fitTable['intercept'])''',number=neval)
+    elif method=='numpy':
+        times[method] = timeit.timeit('''import pandas as pd# Some incomplete data
+incData  = pd.DataFrame({'comp': (['A']*3 + ['B']*5 + ['C']*4)*1000,
+                        'x': ([1,2,3] + [1,2,3,4,5] + [1,2,3,4])*1000,
+                        'y': ([3,None,7] + [1,4,7,None,None] + [4,None,2,1])*1000})
+
+# Results of linear fit incomplete data
+fitTable = pd.DataFrame({'slope': [2,3,-1],
+                        'intercept': [1,-2,5]},
+                        index=['A','B','C'])
+mask = pd.isna(incData['y'])
+incData.loc[mask,'y'] = incData.loc[mask,'x']*\\
+                        fitTable.loc[incData.loc[mask,'comp'],'slope'].to_numpy()+\\
+                        fitTable.loc[incData.loc[mask,'comp'],'intercept'].to_numpy()''',number=neval)
+    elif method=='numpy_nomask':
+        times[method] = timeit.timeit('''import pandas as pd# Some incomplete data
+incData  = pd.DataFrame({'comp': (['A']*3 + ['B']*5 + ['C']*4)*1000,
+                        'x': ([1,2,3] + [1,2,3,4,5] + [1,2,3,4])*1000,
+                        'y': ([3,None,7] + [1,4,7,None,None] + [4,None,2,1])*1000})
+
+# Results of linear fit incomplete data
+fitTable = pd.DataFrame({'slope': [2,3,-1],
+                        'intercept': [1,-2,5]},
+                        index=['A','B','C'])
+incData.loc[pd.isna(incData['y']),'y'] = incData.loc[pd.isna(incData['y']),'x']*\\
+                                            fitTable.loc[incData.loc[pd.isna(incData['y']),'comp'],'slope'].to_numpy()+\\
+                                            fitTable.loc[incData.loc[pd.isna(incData['y']),'comp'],'intercept'].to_numpy()''',number=neval)                                      
+    print(method + ': ' + str(times[method]) + '\n')
